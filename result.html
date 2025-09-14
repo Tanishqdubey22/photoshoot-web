@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Photo Booth Strip</title>
+<style>
+  body {
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+    background: linear-gradient(180deg, #ffd6c9, #ffe6d6);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Photobooth strip container */
+  .strip-container {
+    display: flex;
+    flex-direction: column; /* stack strip and buttons vertically */
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* The white strip */
+  .photo-strip {
+    background: #fff;
+    border-radius: 20px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 200px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  }
+
+  .photo-strip img {
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    object-fit: cover;
+  }
+
+  .strip-footer {
+    font-family: cursive;
+    font-size: 14px;
+    color: #de4040;
+  }
+
+  /* Buttons */
+  .buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px; /* push buttons lower */
+  }
+
+  button {
+    padding: 12px 18px;
+    font-size: 14px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    background: linear-gradient(135deg, #ff6f91, #ff9671);
+    color: #fff;
+    transition: 0.3s ease;
+  }
+  button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="strip-container">
+  <div class="photo-strip" id="photoStrip">
+    <!-- Images will be appended here -->
+    <div class="strip-footer" id="stripFooter"></div>
+  </div>
+
+  <div class="buttons">
+    <button id="reshoot">Reshoot</button>
+    <button id="download">Download Strip</button>
+  </div>
+</div>
+
+<script>
+  const photoStrip = document.getElementById('photoStrip');
+  const footer = document.getElementById('stripFooter');
+  const savedData = JSON.parse(localStorage.getItem('photoReel') || '[]');
+
+  // Add photos to strip
+  savedData.forEach(src => {
+    const img = new Image();
+    img.src = src;
+    photoStrip.insertBefore(img, footer);
+  });
+
+  // Add footer text/date
+  const today = new Date();
+  footer.textContent = `Tanishq • ${today.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'})}`;
+
+  // Reshoot button
+  document.getElementById('reshoot').addEventListener('click', () => {
+    window.location.href = 'index.html';
+  });
+
+  // Download strip button
+  document.getElementById('download').addEventListener('click', () => {
+    const canvas = document.createElement('canvas');
+    const width = 200; // match the displayed strip width
+    const imgHeight = 150; // fixed height for each photo
+    const padding = 15;
+    const footerHeight = 30;
+    const height = savedData.length * (imgHeight + 10) + padding*2 + footerHeight;
+
+    canvas.width = width + padding*2;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let loaded = 0;
+    savedData.forEach((src, i) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous"; // in case of external images
+      img.src = src;
+      img.onload = () => {
+        const y = padding + i*(imgHeight + 10);
+        // Draw rounded rectangle for each photo
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(padding, y + 12);
+        ctx.quadraticCurveTo(padding, y, padding + 12, y);
+        ctx.lineTo(width + padding - 12, y);
+        ctx.quadraticCurveTo(width + padding, y, width + padding, y + 12);
+        ctx.lineTo(width + padding, y + imgHeight - 12);
+        ctx.quadraticCurveTo(width + padding, y + imgHeight, width + padding - 12, y + imgHeight);
+        ctx.lineTo(padding + 12, y + imgHeight);
+        ctx.quadraticCurveTo(padding, y + imgHeight, padding, y + imgHeight - 12);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(img, padding, y, width, imgHeight);
+        ctx.restore();
+
+        loaded++;
+        if (loaded === savedData.length) {
+          // Draw footer
+          ctx.font = "16px cursive";
+          ctx.fillStyle = "#de4040";
+          ctx.textAlign = "center";
+          ctx.fillText(footer.textContent, canvas.width/2, height - footerHeight/2 + 5);
+
+          // Download
+          const link = document.createElement('a');
+          link.download = "photo-strip.png";
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
